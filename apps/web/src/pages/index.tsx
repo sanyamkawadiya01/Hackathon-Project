@@ -18,8 +18,28 @@ import {
   BookOpen,
   User as UserIcon,
   ChevronRight,
-  TrendingUp
+  TrendingUp,
+  Download,
+  Flame
 } from 'lucide-react';
+import {
+  ResponsiveContainer,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar,
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  Bar
+} from 'recharts';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -36,8 +56,12 @@ export default function Dashboard() {
   const [activeRepo, setActiveRepo] = useState<any>(null);
   const [verificationReport, setVerificationReport] = useState<any>(null);
 
-  // Fetch initial profile on mount
+  const [vds, setVds] = useState<any>(null);
+  const [metrics, setMetrics] = useState<any>(null);
+  const [mounted, setMounted] = useState(false);
+
   useEffect(() => {
+    setMounted(true);
     fetchProfile(username);
   }, []);
 
@@ -53,6 +77,19 @@ export default function Dashboard() {
           setActiveRepo(json.data.repositories[0]);
         } else {
           setActiveRepo(null);
+        }
+
+        // Fetch scores & VDS
+        const vdsRes = await fetch(`${API_BASE_URL}/api/users/${targetUser}/vds`);
+        if (vdsRes.ok) {
+          const vdsJson = await vdsRes.json();
+          if (vdsJson.success) setVds(vdsJson.data);
+        }
+        
+        const metricsRes = await fetch(`${API_BASE_URL}/api/users/${targetUser}/metrics`);
+        if (metricsRes.ok) {
+          const metricsJson = await metricsRes.json();
+          if (metricsJson.success) setMetrics(metricsJson.data);
         }
       } else {
         loadDemoFallback(targetUser);
@@ -82,16 +119,14 @@ export default function Dashboard() {
         id: 'repo_demo1',
         repositoryId: 'demo-repo-id-1',
         userId: 'demo-user-id-123',
-        name: 'fastify-auth-node',
-        fullName: `${targetUser}/fastify-auth-node`,
-        description: 'A verified production-ready implementation of fastify auth module.',
-        language: 'TypeScript',
-        primaryLanguage: 'TypeScript',
-        stars: 42,
-        starsCount: 42,
-        forks: 12,
-        forksCount: 12,
-        topics: ['fastify', 'typescript', 'auth', 'jwt'],
+        name: 'proof-of-build',
+        fullName: `${targetUser}/proof-of-build`,
+        description: 'A verified production-ready implementation of.',
+        stars: 45,
+        starsCount: 45,
+        forks: 10,
+        forksCount: 10,
+        topics: ['nextjs', 'nestjs', 'prisma', 'monorepo'],
         complexityScore: 82,
         createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
         aiAudit: {
@@ -103,42 +138,125 @@ export default function Dashboard() {
           improvements: ['Implement runtime config validations', 'Move to short-lived token strategies']
         },
         commits: [
-          { sha: 'a7b2c9d', authorName: 'Sanya Dev', message: 'feat: add user authentication flow and JWT validation', linesAdded: 320, linesDeleted: 15 },
-          { sha: 'd3e4f5a', authorName: 'Sanya Dev', message: 'fix: resolve race conditions on token refresh', linesAdded: 45, linesDeleted: 8 }
+          { sha: 'a7b2c9d', authorName: targetUser, message: 'feat: add user authentication flow and JWT validation', linesAdded: 320, linesDeleted: 15 },
+          { sha: 'd3e4f5a', authorName: targetUser, message: 'fix: resolve race conditions on token refresh', linesAdded: 45, linesDeleted: 8 }
         ]
       },
       {
         id: 'repo_demo2',
         repositoryId: 'demo-repo-id-2',
         userId: 'demo-user-id-123',
-        name: 'solidity-token-bridge',
-        fullName: `${targetUser}/solidity-token-bridge`,
-        description: 'Smart contracts for secure cross-chain ledger validations.',
-        language: 'Solidity',
-        primaryLanguage: 'Solidity',
-        stars: 18,
-        starsCount: 18,
-        forks: 4,
-        forksCount: 4,
-        topics: ['solidity', 'blockchain', 'ethereum', 'bridge'],
-        complexityScore: 74,
+        name: 'fastify-auth-node',
+        fullName: `${targetUser}/fastify-auth-node`,
+        description: 'Fastify authentication modules supporting secure JWT sessions.',
+        language: 'TypeScript',
+        primaryLanguage: 'TypeScript',
+        stars: 12,
+        starsCount: 12,
+        forks: 2,
+        forksCount: 2,
+        topics: ['fastify', 'jwt', 'security'],
+        complexityScore: 75,
         createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
         aiAudit: {
-          readabilityScore: 82,
-          modularityScore: 78,
-          securityScore: 92,
+          readabilityScore: 85,
+          modularityScore: 90,
+          securityScore: 80,
           summary: 'Secure token bridge implementation with reentrancy protection on major transfers.',
           vulnerabilities: [],
           improvements: ['Audit withdrawal limits', 'Add multi-sig approvals']
         },
         commits: [
-          { sha: 'f2c3d4e', authorName: 'Sanya Dev', message: 'feat: add reentrancy guards and pause functionalities', linesAdded: 180, linesDeleted: 2 }
+          { sha: 'f2c3d4e', authorName: targetUser, message: 'feat: add reentrancy guards and pause functionalities', linesAdded: 180, linesDeleted: 2 }
         ]
       }
     ];
 
+    const demoVds = {
+      vds: 89,
+      grade: 'A',
+      rank: 'Advanced Developer',
+      breakdown: {
+        skillScore: 92,
+        contributionScore: 84,
+        trustScore: 88,
+        repositoryComplexity: 86,
+        activityScore: 80,
+        projectDiversity: 90,
+        aiAuditScore: 91
+      }
+    };
+
+    const demoMetrics = {
+      username: targetUser,
+      metrics: {
+        vds: 89,
+        grade: 'A',
+        rank: 'Advanced Developer',
+        skillScore: 92,
+        contributionScore: 84,
+        trustScore: 88,
+        repositoryComplexity: 86,
+        activityScore: 80,
+        projectDiversity: 90,
+        aiAuditScore: 91
+      },
+      repositories: [
+        {
+          id: 'repo_demo1',
+          name: 'proof-of-build',
+          fullName: `${targetUser}/proof-of-build`,
+          isFork: false,
+          complexityScore: 82,
+          contributionAnalysis: {
+            totalCommits: 45,
+            userCommits: 38,
+            contributionPercentage: 84.44,
+            linesAdded: 4320,
+            linesDeleted: 450,
+            activeDays: 12,
+            commitConsistency: 78,
+            avgCommitsPerWeek: 3.2,
+            contributionScore: 84,
+            activityScore: 80,
+            trustScore: 88,
+            ownershipScore: 92,
+            consistencyScore: 78,
+            ownershipConfidence: 92,
+            commitQualityScore: 86
+          }
+        },
+        {
+          id: 'repo_demo2',
+          name: 'fastify-auth-node',
+          fullName: `${targetUser}/fastify-auth-node`,
+          isFork: false,
+          complexityScore: 75,
+          contributionAnalysis: {
+            totalCommits: 15,
+            userCommits: 12,
+            contributionPercentage: 80.00,
+            linesAdded: 1800,
+            linesDeleted: 210,
+            activeDays: 5,
+            commitConsistency: 60,
+            avgCommitsPerWeek: 1.5,
+            contributionScore: 72,
+            activityScore: 65,
+            trustScore: 82,
+            ownershipScore: 85,
+            consistencyScore: 60,
+            ownershipConfidence: 85,
+            commitQualityScore: 80
+          }
+        }
+      ]
+    };
+
     setAnalyzedUser(demoUser);
     setRepositories(demoRepos);
+    setVds(demoVds);
+    setMetrics(demoMetrics);
     setActiveRepo(demoRepos[0]);
   };
 
@@ -173,11 +291,26 @@ export default function Dashboard() {
           setActiveRepo(null);
         }
         setVerificationReport(null);
+
+        // Fetch scores & VDS
+        try {
+          const vdsRes = await fetch(`${API_BASE_URL}/api/users/${json.user.username}/vds`);
+          if (vdsRes.ok) {
+            const vdsJson = await vdsRes.json();
+            if (vdsJson.success) setVds(vdsJson.data);
+          }
+          const metricsRes = await fetch(`${API_BASE_URL}/api/users/${json.user.username}/metrics`);
+          if (metricsRes.ok) {
+            const metricsJson = await metricsRes.json();
+            if (metricsJson.success) setMetrics(metricsJson.data);
+          }
+        } catch (scoreErr) {
+          console.warn('Failed to retrieve scores after analysis:', scoreErr);
+        }
       }
     } catch (err: any) {
       console.error(err);
       setSearchError(err.message || 'Connection to analysis engine failed.');
-      // Keep old user or load fallback sandbox
       setTimeout(() => {
         loadDemoFallback(username.trim());
       }, 500);
@@ -314,9 +447,26 @@ export default function Dashboard() {
                   alt={analyzedUser.name || analyzedUser.username} 
                   style={{ width: '64px', height: '64px', borderRadius: '50%', border: '2px solid var(--primary)' }}
                 />
-                <div>
-                  <h4 style={{ fontSize: '1.15rem', fontWeight: 700 }}>{analyzedUser.name || analyzedUser.username}</h4>
-                  <p style={{ color: 'var(--primary)', fontSize: '0.85rem', fontWeight: 600 }}>@{analyzedUser.username}</p>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <h4 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0 }}>{analyzedUser.displayName || analyzedUser.name || analyzedUser.username}</h4>
+                    {vds && (
+                      <span 
+                        style={{ 
+                          fontSize: '0.7rem', 
+                          background: vds.rank.includes('Elite') ? 'rgba(245,158,11,0.15)' : 'rgba(99,102,241,0.15)', 
+                          color: vds.rank.includes('Elite') ? '#f59e0b' : 'var(--primary)',
+                          border: `1px solid ${vds.rank.includes('Elite') ? 'rgba(245,158,11,0.3)' : 'rgba(99,102,241,0.3)'}`,
+                          padding: '2px 8px',
+                          borderRadius: '12px',
+                          fontWeight: 600
+                        }}
+                      >
+                        {vds.rank}
+                      </span>
+                    )}
+                  </div>
+                  <p style={{ color: 'var(--primary)', fontSize: '0.85rem', fontWeight: 600, marginTop: '2px', marginBottom: 0 }}>@{analyzedUser.username}</p>
                 </div>
               </div>
               
@@ -326,7 +476,7 @@ export default function Dashboard() {
                 </p>
               )}
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: 'rgba(0,0,0,0.15)', padding: '12px', borderRadius: '8px', fontSize: '0.85rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: 'rgba(0,0,0,0.15)', padding: '12px', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '16px' }}>
                 <div>
                   <div style={{ color: 'var(--text-muted)' }}>Followers</div>
                   <div style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--text-primary)' }}>{analyzedUser.followers}</div>
@@ -337,7 +487,72 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <div style={{ marginTop: '16px', textAlign: 'right' }}>
+              {/* VDS Main Card Callout */}
+              {vds && (
+                <div style={{ 
+                  background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.1), rgba(13, 148, 136, 0.1))',
+                  border: '1px solid rgba(99, 102, 241, 0.2)',
+                  borderRadius: '10px',
+                  padding: '16px',
+                  marginBottom: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '16px'
+                }}>
+                  <div style={{ 
+                    width: '60px', 
+                    height: '60px', 
+                    borderRadius: '50%', 
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '3px solid var(--secondary)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}>
+                    <span style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--secondary)' }}>{vds.vds}</span>
+                    <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>vds</span>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>verified developer score</div>
+                    <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                      Grade: <span style={{ color: 'var(--secondary)' }}>{vds.grade}</span> | Rank: <span style={{ color: 'var(--primary)' }}>{vds.rank}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Recruiter PDF report download */}
+              <a 
+                href={`${API_BASE_URL}/api/reports/${analyzedUser.username}/download`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="gradient-border-btn"
+                style={{ 
+                  display: 'inline-flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  gap: '8px', 
+                  textDecoration: 'none',
+                  width: '100%',
+                  marginBottom: '16px',
+                  background: 'linear-gradient(135deg, var(--primary), var(--secondary))',
+                  color: '#fff',
+                  border: 'none',
+                  fontWeight: 600,
+                  fontSize: '0.85rem',
+                  borderRadius: '8px',
+                  padding: '10px 16px',
+                  cursor: 'pointer',
+                  textAlign: 'center',
+                  boxShadow: '0 4px 12px rgba(79, 70, 229, 0.2)'
+                }}
+              >
+                <Download size={15} /> Download Recruiter Report
+              </a>
+
+              <div style={{ textAlign: 'right' }}>
                 <Link 
                   href={`/p/${analyzedUser.username}`} 
                   style={{ 
@@ -352,6 +567,33 @@ export default function Dashboard() {
                 >
                   View Public Portfolio <ChevronRight size={14} />
                 </Link>
+              </div>
+            </div>
+          )}
+
+          {/* VDS Radar Breakdown Chart */}
+          {mounted && vds && (
+            <div className="glass-card" style={{ marginTop: '-8px' }}>
+              <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Award size={16} style={{ color: 'var(--primary)' }} /> VDS Competency Map
+              </h4>
+              <div style={{ width: '100%', height: 220 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart cx="50%" cy="50%" outerRadius="70%" data={[
+                    { subject: 'Skills', value: vds.breakdown.skillScore },
+                    { subject: 'Commits', value: vds.breakdown.contributionScore },
+                    { subject: 'Trust', value: vds.breakdown.trustScore },
+                    { subject: 'Complexity', value: vds.breakdown.repositoryComplexity },
+                    { subject: 'Activity', value: vds.breakdown.activityScore },
+                    { subject: 'Diversity', value: vds.breakdown.projectDiversity },
+                    { subject: 'AI Audit', value: vds.breakdown.aiAuditScore }
+                  ]}>
+                    <PolarGrid stroke="rgba(255,255,255,0.08)" />
+                    <PolarAngleAxis dataKey="subject" stroke="var(--text-muted)" style={{ fontSize: '10px' }} />
+                    <PolarRadiusAxis angle={30} domain={[0, 100]} stroke="rgba(255,255,255,0.1)" tick={{ fill: 'var(--text-muted)', fontSize: '8px' }} />
+                    <Radar name="Scoring Breakdown" dataKey="value" stroke="var(--secondary)" fill="var(--secondary)" fillOpacity={0.25} />
+                  </RadarChart>
+                </ResponsiveContainer>
               </div>
             </div>
           )}
@@ -495,6 +737,118 @@ export default function Dashboard() {
                   <div style={{ fontSize: '2rem', fontWeight: 800, color: '#f59e0b' }}>{activeRepo.linesContributed || 1200}</div>
                 </div>
               </div>
+
+              {/* Contribution Analytics & Ownership confidence charts */}
+              {(() => {
+                const activeRepoAnalysis = metrics?.repositories?.find((r: any) => r.name === activeRepo?.name)?.contributionAnalysis || {
+                  totalCommits: activeRepo?.commitsCount || activeRepo?.commits?.length || 20,
+                  userCommits: activeRepo?.commitsCount || activeRepo?.commits?.filter((c: any) => c.authorName === analyzedUser?.name || c.authorName === 'Sanya Dev' || c.authorName === username).length || 15,
+                  contributionPercentage: activeRepo?.userContributionScore || 85,
+                  linesAdded: activeRepo?.linesContributed || 1200,
+                  linesDeleted: activeRepo?.linesContributed ? Math.round(activeRepo.linesContributed * 0.15) : 180,
+                  activeDays: 8,
+                  commitConsistency: 75,
+                  avgCommitsPerWeek: 2.5,
+                  ownershipConfidence: 90,
+                  commitQualityScore: 85
+                };
+
+                const gaugeData = [
+                  { name: 'Confidence', value: activeRepoAnalysis.ownershipConfidence, fill: 'var(--secondary)' },
+                  { name: 'Remaining', value: 100 - activeRepoAnalysis.ownershipConfidence, fill: 'rgba(255,255,255,0.05)' }
+                ];
+
+                const commitsData = [
+                  { name: 'User Commits', value: activeRepoAnalysis.userCommits, fill: 'var(--primary)' },
+                  { name: 'Other Commits', value: Math.max(0, activeRepoAnalysis.totalCommits - activeRepoAnalysis.userCommits), fill: 'rgba(255,255,255,0.1)' }
+                ];
+
+                return (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1.2fr', gap: '16px' }}>
+                    
+                    {/* Metrics grid and mini commit comparison */}
+                    <div className="glass-card">
+                      <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Activity size={16} style={{ color: 'var(--secondary)' }} /> Contribution Metrics
+                      </h4>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '0.85rem', marginBottom: '16px' }}>
+                        <div style={{ borderLeft: '3px solid var(--primary)', paddingLeft: '8px' }}>
+                          <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Commit Quality Score</div>
+                          <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>{activeRepoAnalysis.commitQualityScore}%</div>
+                        </div>
+                        <div style={{ borderLeft: '3px solid var(--secondary)', paddingLeft: '8px' }}>
+                          <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Commit Consistency</div>
+                          <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>{activeRepoAnalysis.commitConsistency}%</div>
+                        </div>
+                        <div style={{ borderLeft: '3px solid #f59e0b', paddingLeft: '8px' }}>
+                          <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Avg Commits/Week</div>
+                          <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>{activeRepoAnalysis.avgCommitsPerWeek}</div>
+                        </div>
+                        <div style={{ borderLeft: '3px solid #10b981', paddingLeft: '8px' }}>
+                          <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Contribution Ratio</div>
+                          <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>{activeRepoAnalysis.contributionPercentage}%</div>
+                        </div>
+                      </div>
+                      
+                      {mounted && (
+                        <div style={{ height: 100, width: '100%' }}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={[{
+                              name: 'Commits',
+                              'User': activeRepoAnalysis.userCommits,
+                              'Others': Math.max(0, activeRepoAnalysis.totalCommits - activeRepoAnalysis.userCommits)
+                            }]} layout="vertical">
+                              <XAxis type="number" hide />
+                              <YAxis type="category" dataKey="name" hide />
+                              <Tooltip contentStyle={{ background: 'rgba(15,23,42,0.95)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff' }} />
+                              <Legend iconSize={8} iconType="circle" style={{ fontSize: '10px' }} />
+                              <Bar dataKey="User" stackId="a" fill="var(--primary)" barSize={14} radius={[4, 0, 0, 4]} />
+                              <Bar dataKey="Others" stackId="a" fill="rgba(255,255,255,0.1)" barSize={14} radius={[0, 4, 4, 0]} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Ownership gauge half-donut */}
+                    <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                      <h4 style={{ fontSize: '0.85rem', fontWeight: 700, width: '100%', marginBottom: '8px', textAlign: 'center' }}>
+                        Ownership Confidence
+                      </h4>
+                      {mounted ? (
+                        <div style={{ width: '100%', height: 100, position: 'relative', display: 'flex', justifyContent: 'center' }}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={gaugeData}
+                                cx="50%"
+                                cy="80%"
+                                startAngle={180}
+                                endAngle={0}
+                                innerRadius={28}
+                                outerRadius={42}
+                                dataKey="value"
+                              >
+                                {gaugeData.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={entry.fill} />
+                                ))}
+                              </Pie>
+                            </PieChart>
+                          </ResponsiveContainer>
+                          <div style={{ position: 'absolute', bottom: '15px', textAlign: 'center' }}>
+                            <span style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--secondary)' }}>
+                              {activeRepoAnalysis.ownershipConfidence}%
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ height: 100 }} />
+                      )}
+                    </div>
+
+                  </div>
+                );
+              })()}
 
               {/* Code Quality AI Summary */}
               {activeRepo.aiAudit && (

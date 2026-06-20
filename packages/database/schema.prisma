@@ -28,6 +28,7 @@ model User {
   skills           UserSkill[]
   achievements     UserAchievement[]
   ledgerEntries    ProofLedger[]
+  metrics          DeveloperMetrics?
 
   @@map("users")
 }
@@ -65,11 +66,13 @@ model Repository {
   repoCreatedAt   DateTime?
   lastAnalyzedAt  DateTime?
   complexityScore Int            @default(0)
+  isFork          Boolean        @default(false)
   createdAt       DateTime       @default(now())
 
   commits      Commit[]
   deployments  Deployment[]
   contributions Contribution[]
+  contributionAnalysis ContributionAnalysis?
 
   @@map("repositories")
 }
@@ -196,4 +199,49 @@ model UserAchievement {
 
   @@id([userId, achievementId])
   @@map("user_achievements")
+}
+
+model DeveloperMetrics {
+  id                    String   @id @default(uuid())
+  userId                String   @unique
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vds                   Int      @default(0)
+  grade                 String   @default("Beginner Developer")
+  rank                  String   @default("Beginner Developer")
+  skillScore            Int      @default(0)
+  contributionScore     Int      @default(0)
+  trustScore            Int      @default(0)
+  repositoryComplexity  Int      @default(0)
+  activityScore         Int      @default(0)
+  projectDiversity      Int      @default(0)
+  aiAuditScore          Int      @default(0)
+  updatedAt             DateTime @updatedAt
+  createdAt             DateTime @default(now())
+
+  @@map("developer_metrics")
+}
+
+model ContributionAnalysis {
+  id                    String   @id @default(uuid())
+  repositoryId          String   @unique
+  repository            Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  totalCommits          Int      @default(0)
+  userCommits           Int      @default(0)
+  contributionPercentage Decimal @db.Decimal(5, 2) @default(0.00)
+  linesAdded            Int      @default(0)
+  linesDeleted          Int      @default(0)
+  activeDays            Int      @default(0)
+  commitConsistency     Int      @default(0)
+  avgCommitsPerWeek     Decimal  @db.Decimal(5, 2) @default(0.00)
+  contributionScore     Int      @default(0)
+  activityScore         Int      @default(0)
+  trustScore            Int      @default(0)
+  ownershipScore        Int      @default(0)
+  consistencyScore      Int      @default(0)
+  ownershipConfidence   Int      @default(0)
+  commitQualityScore    Int      @default(0)
+  updatedAt             DateTime @updatedAt
+  createdAt             DateTime @default(now())
+
+  @@map("contribution_analyses")
 }

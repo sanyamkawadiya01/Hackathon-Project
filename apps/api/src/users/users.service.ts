@@ -3,6 +3,7 @@ import { GithubApiService } from './github-api.service';
 import { PrismaService } from '../database/prisma.service';
 import { RepositoriesService } from '../repositories/repositories.service';
 import { SkillExtractorService } from './skill-extractor.service';
+import { ScoringService } from './scoring.service';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -17,7 +18,8 @@ export class UsersService {
     private readonly githubApiService: GithubApiService,
     private readonly prisma: PrismaService,
     private readonly repositoriesService: RepositoriesService,
-    private readonly skillExtractorService: SkillExtractorService
+    private readonly skillExtractorService: SkillExtractorService,
+    private readonly scoringService: ScoringService
   ) {}
 
   async analyzeUser(username: string) {
@@ -306,6 +308,15 @@ export class UsersService {
         }
       } catch (extractorErr) {
         this.logger.error(`Skill extraction failed for ${username}: ${extractorErr.message}`);
+      }
+
+      // Trigger developer metrics & VDS calculation
+      try {
+        this.logger.log(`Triggering scoring metrics calculation for ${username}`);
+        await this.scoringService.calculateAndStoreMetrics(username, userId);
+        this.logger.log(`Successfully completed scoring metrics & VDS calculation for ${username}`);
+      } catch (scoringErr) {
+        this.logger.error(`Scoring metrics calculation failed for ${username}: ${scoringErr.message}`);
       }
     });
   }

@@ -4,6 +4,7 @@ import { RepositoriesModule } from './repositories/repositories.module';
 import { VerificationModule } from './verification/verification.module';
 import { DatabaseModule } from './database/database.module';
 import { UsersModule } from './users/users.module';
+import { ReportsModule } from './reports/reports.module';
 
 @Module({
   imports: [
@@ -11,7 +12,9 @@ import { UsersModule } from './users/users.module';
     AuthModule,
     RepositoriesModule,
     VerificationModule,
-    UsersModule
+    UsersModule,
+    ReportsModule
   ],
 })
 export class AppModule {}
+
