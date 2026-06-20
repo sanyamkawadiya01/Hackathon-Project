@@ -95,3 +95,105 @@ export interface AnalyzeUserResponse {
   analysisStatus: string;
   jobId?: string;
 }
+
+export interface DeveloperMetricsDto {
+  vds: number;
+  grade: string;
+  rank: string;
+  skillScore: number;
+  contributionScore: number;
+  trustScore: number;
+  repositoryComplexity: number;
+  activityScore: number;
+  projectDiversity: number;
+  aiAuditScore: number;
+}
+
+export interface ContributionAnalysisDto {
+  totalCommits: number;
+  userCommits: number;
+  contributionPercentage: number;
+  linesAdded: number;
+  linesDeleted: number;
+  activeDays: number;
+  commitConsistency: number;
+  avgCommitsPerWeek: number;
+  contributionScore: number;
+  activityScore: number;
+  trustScore: number;
+  ownershipScore: number;
+  consistencyScore: number;
+  ownershipConfidence: number;
+  commitQualityScore: number;
+}
+
+export interface UserMetricsResponse {
+  username: string;
+  metrics: DeveloperMetricsDto | null;
+  repositories: Array<{
+    id: string;
+    name: string;
+    fullName: string;
+    isFork: boolean;
+    complexityScore: number;
+    contributionAnalysis: ContributionAnalysisDto | null;
+  }>;
+}
+
+export interface UserVdsResponse {
+  vds: number;
+  grade: string;
+  rank: string;
+  breakdown: {
+    skillScore: number;
+    contributionScore: number;
+    trustScore: number;
+    repositoryComplexity: number;
+    activityScore: number;
+    projectDiversity: number;
+    aiAuditScore: number;
+  };
+}
+
+export interface RecruiterReportDto {
+  username: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  bio: string | null;
+  followers: number;
+  publicRepos: number;
+  createdAt: string;
+  vds: UserVdsResponse;
+  skills: UserSkillDto[];
+  repositories: Array<{
+    name: string;
+    fullName: string;
+    description: string | null;
+    language: string | null;
+    stars: number;
+    forks: number;
+    complexityScore: number;
+    contributionAnalysis: ContributionAnalysisDto | null;
+    aiAudit: {
+      readabilityScore: number;
+      modularityScore: number;
+      securityScore: number;
+      summary: string;
+      vulnerabilities: string[];
+      improvements: string[];
+    } | null;
+  }>;
+  achievements: Array<{
+    title: string;
+    description: string;
+    badgeIconUrl: string;
+  }>;
+  ledgerEntries: Array<{
+    eventType: string;
+    targetId: string;
+    payload: any;
+    cryptographicProof: string;
+    createdAt: string;
+  }>;
+}
+

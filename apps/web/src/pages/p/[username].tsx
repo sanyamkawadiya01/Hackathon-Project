@@ -14,8 +14,18 @@ import {
   Cpu,
   ExternalLink,
   AlertCircle,
-  ArrowLeft
+  ArrowLeft,
+  Download,
+  Award
 } from 'lucide-react';
+import {
+  ResponsiveContainer,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar
+} from 'recharts';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -26,6 +36,14 @@ export default function PublicPortfolio() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<any>(null);
+
+  const [vds, setVds] = useState<any>(null);
+  const [metrics, setMetrics] = useState<any>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (username) {
@@ -152,6 +170,23 @@ export default function PublicPortfolio() {
         };
 
         setProfile(mappedProfile);
+
+        // Fetch VDS
+        try {
+          const vdsRes = await fetch(`${API_BASE_URL}/api/users/${targetUser}/vds`);
+          if (vdsRes.ok) {
+            const vdsJson = await vdsRes.json();
+            if (vdsJson.success) setVds(vdsJson.data);
+          }
+          
+          const metricsRes = await fetch(`${API_BASE_URL}/api/users/${targetUser}/metrics`);
+          if (metricsRes.ok) {
+            const metricsJson = await metricsRes.json();
+            if (metricsJson.success) setMetrics(metricsJson.data);
+          }
+        } catch (scoreErr) {
+          console.warn('Failed to retrieve scores in profile:', scoreErr);
+        }
       } else {
         throw new Error(json.error || 'User not found in system database');
       }
@@ -197,6 +232,88 @@ export default function PublicPortfolio() {
         { name: 'fastify-auth-node', fullName: `${targetUser}/fastify-auth-node`, complexityScore: 82, linesContributed: 4320, commitsCount: 3 }
       ]
     });
+
+    setVds({
+      vds: 89,
+      grade: 'A',
+      rank: 'Advanced Developer',
+      breakdown: {
+        skillScore: 92,
+        contributionScore: 84,
+        trustScore: 88,
+        repositoryComplexity: 86,
+        activityScore: 80,
+        projectDiversity: 90,
+        aiAuditScore: 91
+      }
+    });
+
+    setMetrics({
+      username: targetUser,
+      metrics: {
+        vds: 89,
+        grade: 'A',
+        rank: 'Advanced Developer',
+        skillScore: 92,
+        contributionScore: 84,
+        trustScore: 88,
+        repositoryComplexity: 86,
+        activityScore: 80,
+        projectDiversity: 90,
+        aiAuditScore: 91
+      },
+      repositories: [
+        {
+          id: 'repo_demo1',
+          name: 'proof-of-build',
+          fullName: `${targetUser}/proof-of-build`,
+          isFork: false,
+          complexityScore: 82,
+          contributionAnalysis: {
+            totalCommits: 45,
+            userCommits: 38,
+            contributionPercentage: 84.44,
+            linesAdded: 4320,
+            linesDeleted: 450,
+            activeDays: 12,
+            commitConsistency: 78,
+            avgCommitsPerWeek: 3.2,
+            contributionScore: 84,
+            activityScore: 80,
+            trustScore: 88,
+            ownershipScore: 92,
+            consistencyScore: 78,
+            ownershipConfidence: 92,
+            commitQualityScore: 86
+          }
+        },
+        {
+          id: 'repo_demo2',
+          name: 'fastify-auth-node',
+          fullName: `${targetUser}/fastify-auth-node`,
+          isFork: false,
+          complexityScore: 75,
+          contributionAnalysis: {
+            totalCommits: 15,
+            userCommits: 12,
+            contributionPercentage: 80.00,
+            linesAdded: 1800,
+            linesDeleted: 210,
+            activeDays: 5,
+            commitConsistency: 60,
+            avgCommitsPerWeek: 1.5,
+            contributionScore: 72,
+            activityScore: 65,
+            trustScore: 82,
+            ownershipScore: 85,
+            consistencyScore: 60,
+            ownershipConfidence: 85,
+            commitQualityScore: 80
+          }
+        }
+      ]
+    });
+
     setLoading(false);
   };
 
@@ -244,8 +361,25 @@ export default function PublicPortfolio() {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
             <div>
-              <h2 style={{ fontSize: '2.25rem', fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{profile.displayName}</h2>
-              <p style={{ color: 'var(--primary)', fontWeight: 600, fontSize: '1.1rem', marginTop: '4px' }}>@{profile.username}</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                <h2 style={{ fontSize: '2.25rem', fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', margin: 0 }}>{profile.displayName}</h2>
+                {vds && (
+                  <span 
+                    style={{ 
+                      fontSize: '0.75rem', 
+                      background: vds.rank.includes('Elite') ? 'rgba(245,158,11,0.15)' : 'rgba(99,102,241,0.15)', 
+                      color: vds.rank.includes('Elite') ? '#f59e0b' : 'var(--primary)',
+                      border: `1px solid ${vds.rank.includes('Elite') ? 'rgba(245,158,11,0.3)' : 'rgba(99,102,241,0.3)'}`,
+                      padding: '3px 10px',
+                      borderRadius: '12px',
+                      fontWeight: 600
+                    }}
+                  >
+                    {vds.rank}
+                  </span>
+                )}
+              </div>
+              <p style={{ color: 'var(--primary)', fontWeight: 600, fontSize: '1.1rem', marginTop: '4px', marginBottom: 0 }}>@{profile.username}</p>
             </div>
             <div style={{ flexShrink: 0 }}>
               <div className="badge badge-score" style={{ padding: '8px 16px', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -259,10 +393,93 @@ export default function PublicPortfolio() {
 
       {/* Columns */}
       <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.8fr', gap: '32px' }}>
-        
+
         {/* Left Side: Skills & Badges */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
           
+          {/* VDS Scorecard Card */}
+          {vds && (
+            <div className="glass-card" style={{ borderLeft: '4px solid var(--secondary)' }}>
+              <h3 style={{ fontSize: '1.25rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <ShieldCheck style={{ color: 'var(--secondary)' }} /> Verified Score (VDS)
+              </h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
+                <div style={{ 
+                  width: '64px', 
+                  height: '64px', 
+                  borderRadius: '50%', 
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '3px solid var(--primary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexDirection: 'column',
+                  flexShrink: 0
+                }}>
+                  <span style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary)' }}>{vds.vds}</span>
+                  <span style={{ fontSize: '0.5rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>VDS</span>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>VERIFICATION GRADE</div>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>
+                    Grade {vds.grade} – {vds.rank}
+                  </div>
+                </div>
+              </div>
+
+              {/* Recruiter report PDF download link */}
+              <a 
+                href={`${API_BASE_URL}/api/reports/${profile.username}/download`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ 
+                  display: 'inline-flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  gap: '8px', 
+                  textDecoration: 'none',
+                  width: '100%',
+                  background: 'linear-gradient(135deg, var(--primary), var(--secondary))',
+                  color: '#fff',
+                  fontWeight: 600,
+                  fontSize: '0.85rem',
+                  borderRadius: '8px',
+                  padding: '10px 16px',
+                  boxShadow: '0 4px 12px rgba(79, 70, 229, 0.2)'
+                }}
+              >
+                <Download size={14} /> Download Recruiter Report
+              </a>
+            </div>
+          )}
+
+          {/* VDS Competency Radar Breakdown */}
+          {mounted && vds && (
+            <div className="glass-card">
+              <h3 style={{ fontSize: '1.1rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Award size={16} /> Competency Mapping
+              </h3>
+              <div style={{ width: '100%', height: 210 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart cx="50%" cy="50%" outerRadius="70%" data={[
+                    { subject: 'Skills', value: vds.breakdown.skillScore },
+                    { subject: 'Commits', value: vds.breakdown.contributionScore },
+                    { subject: 'Trust', value: vds.breakdown.trustScore },
+                    { subject: 'Complexity', value: vds.breakdown.repositoryComplexity },
+                    { subject: 'Activity', value: vds.breakdown.activityScore },
+                    { subject: 'Diversity', value: vds.breakdown.projectDiversity },
+                    { subject: 'AI Audit', value: vds.breakdown.aiAuditScore }
+                  ]}>
+                    <PolarGrid stroke="rgba(255,255,255,0.08)" />
+                    <PolarAngleAxis dataKey="subject" stroke="var(--text-muted)" style={{ fontSize: '10px' }} />
+                    <PolarRadiusAxis angle={30} domain={[0, 100]} stroke="rgba(255,255,255,0.1)" tick={{ fill: 'var(--text-muted)', fontSize: '8px' }} />
+                    <Radar name="Breakdown" dataKey="value" stroke="var(--secondary)" fill="var(--secondary)" fillOpacity={0.25} />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+
           {/* Verified Skills */}
           <div className="glass-card">
             <h3 style={{ fontSize: '1.25rem', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
