@@ -3,6 +3,29 @@ import { PrismaService } from '../database/prisma.service';
 import { GithubApiService } from './github-api.service';
 import { assessCommitMsgQuality } from '../repositories/scoring.util';
 
+export function isCommitAuthor(c: any, username: string, profile: any): boolean {
+  const lowerUsername = username.toLowerCase();
+  
+  // 1. Match by commit author login
+  if (c.author?.login?.toLowerCase() === lowerUsername) return true;
+  if (c.authorLogin?.toLowerCase() === lowerUsername) return true;
+  
+  // 2. Match by GitHub user id
+  if (c.author?.id && profile?.id && String(c.author.id) === String(profile.id)) return true;
+  
+  // 3. Match by name / display name
+  const authorName = (c.commit?.author?.name || c.authorName || '').toLowerCase();
+  if (authorName === lowerUsername) return true;
+  if (profile?.name && authorName === profile.name.toLowerCase()) return true;
+  
+  // 4. Match by email prefix or full email
+  const authorEmail = (c.commit?.author?.email || c.authorEmail || '').toLowerCase();
+  if (profile?.email && authorEmail === profile.email.toLowerCase()) return true;
+  if (authorEmail.startsWith(`${lowerUsername}@`)) return true;
+
+  return false;
+}
+
 @Injectable()
 export class ScoringService {
   private readonly logger = new Logger(ScoringService.name);
@@ -19,6 +42,14 @@ export class ScoringService {
   async calculateAndStoreMetrics(username: string, userId: string): Promise<any> {
     this.logger.log(`Starting scoring metrics calculation for user: ${username}`);
     const lowerUsername = username.toLowerCase();
+
+    // Fetch user profile from GitHub API to match author details dynamically
+    let profile: any = null;
+    try {
+      profile = await this.githubApi.getProfile(lowerUsername);
+    } catch (err) {
+      this.logger.warn(`Failed fetching profile in ScoringService: ${err.message}`);
+    }
 
     // 1. Load repositories and user skills
     let repos: any[] = [];
@@ -65,10 +96,14 @@ export class ScoringService {
     const analyses: any[] = [];
     let totalContribution = 0;
     let totalTrust = 0;
-    let totalActivity = 0;
     let totalComplexity = 0;
     let totalAiAudit = 0;
+    let totalCommitQuality = 0;
+    let totalOwnership = 0;
     let countAnalyzed = 0;
+
+    // Collect all user commits across repos for overall activity analysis
+    const allUserCommits: any[] = [];
 
     // 2. Perform contribution analysis for each repository
     for (const repo of repos) {
@@ -76,10 +111,19 @@ export class ScoringService {
       const isFork = repo.isFork || false;
 
       // Fetch actual stats from GitHub API
-      const stats = await this.githubApi.getContributorsStats(lowerUsername, repoName);
-      const commits = await this.githubApi.getCommits(lowerUsername, repoName);
-      const prs = await this.githubApi.getPullRequests(lowerUsername, repoName);
-      const issues = await this.githubApi.getIssues(lowerUsername, repoName);
+      let stats: any[] = [];
+      let commits: any[] = [];
+      let prs: any[] = [];
+      let issues: any[] = [];
+
+      try {
+        stats = await this.githubApi.getContributorsStats(lowerUsername, repoName);
+        commits = await this.githubApi.getCommits(lowerUsername, repoName);
+        prs = await this.githubApi.getPullRequests(lowerUsername, repoName);
+        issues = await this.githubApi.getIssues(lowerUsername, repoName);
+      } catch (err) {
+        this.logger.warn(`Failed to fetch stats/commits for ${repoName}: ${err.message}`);
+      }
 
       // Calculations
       let totalCommits = 0;
@@ -105,7 +149,7 @@ export class ScoringService {
         });
       } else {
         // Safe defaults from commits list
-        userCommits = commits.filter((c: any) => c.author?.login?.toLowerCase() === lowerUsername).length;
+        userCommits = commits.filter((c: any) => isCommitAuthor(c, lowerUsername, profile)).length;
         totalCommits = Math.max(commits.length, userCommits);
         linesAdded = userCommits * 150;
         linesDeleted = userCommits * 30;
@@ -116,8 +160,17 @@ export class ScoringService {
 
       // Active days (unique commit dates)
       const userCommitsList = commits.filter(
-        (c: any) => c.author?.login?.toLowerCase() === lowerUsername
+        (c: any) => isCommitAuthor(c, lowerUsername, profile)
       );
+
+      // Append to the list of user commits for overall activity calculations
+      userCommitsList.forEach((uc) => {
+        allUserCommits.push({
+          ...uc,
+          repoCreatedAt: repo.repoCreatedAt || new Date(Date.now() - 90 * 24 * 3600 * 1000)
+        });
+      });
+
       const uniqueDays = new Set(
         userCommitsList.map((c: any) => {
           const date = c.commit?.author?.date || c.commitDate;
@@ -145,49 +198,70 @@ export class ScoringService {
       const activeWeeks = activeWeeksSet.size;
       const commitConsistency = Math.min(100, Math.round((activeWeeks / Math.min(12, totalWeeks)) * 100));
 
-      // 1. Commit Quality Score (Conventional commits check, message lengths, ticket references)
-      let qualitySum = 0;
+      // 1. Commit Quality Score (Message, Consistency, Significance)
+      let messageQualitySum = 0;
       userCommitsList.forEach((c: any) => {
-        const msg = c.commit?.message || c.message || '';
-        qualitySum += assessCommitMsgQuality(msg);
+        const msg = (c.commit?.message || c.message || '').trim();
+        const msgLower = msg.toLowerCase();
+        
+        if (msg.length < 5) {
+          messageQualitySum += 10;
+        } else if (/^(feat|fix|docs|test|chore|refactor|style|ci)(?:\(.+?\))?!?:/.test(msgLower) && msg.length >= 10) {
+          messageQualitySum += 100;
+        } else if (msg.length >= 15) {
+          messageQualitySum += 80;
+        } else {
+          messageQualitySum += 50;
+        }
       });
-      const avgQualityMultiplier = userCommitsList.length > 0 ? (qualitySum / userCommitsList.length) : 0.8;
-      
-      let commitQualityScore = Math.round(avgQualityMultiplier * 70); // Max 84
-      if (avgCommitsPerWeek >= 2) commitQualityScore += 10;
-      if (commits.length > 10) commitQualityScore += 6; // repository activity indicator
-      commitQualityScore = Math.min(100, Math.max(0, commitQualityScore));
+      const avgMessageQuality = userCommitsList.length > 0 ? (messageQualitySum / userCommitsList.length) : 75;
 
-      // 2. Ownership Confidence
+      const avgLinesChanged = userCommits > 0 ? (linesAdded + linesDeleted) / userCommits : 0;
+      const significanceScore = Math.min(100, Math.round(Math.log10(avgLinesChanged + 1) * 40));
+
+      const commitQualityScore = Math.min(100, Math.max(0, Math.round(
+        (avgMessageQuality * 0.40) +
+        (commitConsistency * 0.30) +
+        (significanceScore * 0.30)
+      )));
+
+      // 2. Ownership Score
       const isCreator = repo.fullName?.split('/')[0]?.toLowerCase() === lowerUsername;
       const creatorScore = isCreator ? 40 : 10;
-      const prCount = prs.filter((p: any) => p.user?.login?.toLowerCase() === lowerUsername).length;
-      const issueCount = issues.filter((i: any) => i.user?.login?.toLowerCase() === lowerUsername).length;
+      const commitVolumeScore = Math.min(30, (userCommits / totalCommits) * 30);
+      
+      let totalRepoLines = 0;
+      stats.forEach((s: any) => {
+        s.weeks?.forEach((w: any) => {
+          totalRepoLines += (w.a || 0) + (w.d || 0);
+        });
+      });
+      if (totalRepoLines === 0) {
+        totalRepoLines = linesAdded + linesDeleted;
+      }
+      const linesScore = Math.min(20, ((linesAdded + linesDeleted) / (totalRepoLines + 1)) * 20);
 
-      let ownershipConfidence = creatorScore + (contributionPercentage * 0.4);
-      if (prCount > 0) ownershipConfidence += 10;
-      if (issueCount > 0) ownershipConfidence += 5;
-      if (activeDays > 10) ownershipConfidence += 5;
-      ownershipConfidence = Math.min(100, Math.round(ownershipConfidence));
+      const mergedPRs = prs.filter(p => 
+        p.user?.login?.toLowerCase() === lowerUsername && 
+        p.merged_at !== null
+      ).length;
+      const prMergedScore = Math.min(10, mergedPRs * 5);
+
+      const ownershipScore = Math.min(100, Math.round(creatorScore + commitVolumeScore + linesScore + prMergedScore));
 
       // 3. Contribution Score
       const volumeScore = Math.min(50, Math.round(Math.log10(linesAdded + 1) * 12.5));
       const pctScore = contributionPercentage * 0.5;
       const contributionScore = Math.round(volumeScore + pctScore);
 
-      // 4. Activity Score
+      // 4. Activity Score (Single repository)
       const activityScore = Math.min(100, Math.round((userCommits * 1.5) + (activeDays * 4) + (avgCommitsPerWeek * 8)));
 
-      // 5. Consistency Score
-      const consistencyScore = commitConsistency;
-
-      // 6. Ownership Score
-      const ownershipScore = ownershipConfidence;
-
-      // 7. Trust Score
+      // 5. Trust Score (Single repository)
       const starsCount = repo.starsCount || repo.stars || 0;
+      
       const trustScore = Math.round(
-        (ownershipConfidence * 0.40) +
+        (ownershipScore * 0.40) +
         (commitQualityScore * 0.30) +
         ((isFork ? 40 : 100) * 0.20) +
         (Math.min(100, starsCount * 5) * 0.10)
@@ -206,8 +280,8 @@ export class ScoringService {
         activityScore,
         trustScore,
         ownershipScore,
-        consistencyScore,
-        ownershipConfidence,
+        consistencyScore: commitConsistency,
+        ownershipConfidence: ownershipScore,
         commitQualityScore,
       };
 
@@ -221,10 +295,11 @@ export class ScoringService {
 
       totalContribution += contributionScore;
       totalTrust += trustScore;
-      totalActivity += activityScore;
       totalComplexity += (repo.complexityScore || 70);
+      totalCommitQuality += commitQualityScore;
+      totalOwnership += ownershipScore;
       
-      // Calculate repo AI Audit score (default fallback or calculated)
+      // Calculate repo AI Audit score
       const audit = repo.aiAudit || { readabilityScore: 82, modularityScore: 85, securityScore: 80 };
       const auditAvg = (audit.readabilityScore + audit.modularityScore + audit.securityScore) / 3;
       totalAiAudit += auditAvg;
@@ -235,40 +310,10 @@ export class ScoringService {
       try {
         await this.prisma.contributionAnalysis.upsert({
           where: { repositoryId: repo.id },
-          update: {
-            totalCommits,
-            userCommits,
-            contributionPercentage,
-            linesAdded,
-            linesDeleted,
-            activeDays,
-            commitConsistency,
-            avgCommitsPerWeek,
-            contributionScore,
-            activityScore,
-            trustScore,
-            ownershipScore,
-            consistencyScore,
-            ownershipConfidence,
-            commitQualityScore,
-          },
+          update: contributionAnalysis,
           create: {
             repositoryId: repo.id,
-            totalCommits,
-            userCommits,
-            contributionPercentage,
-            linesAdded,
-            linesDeleted,
-            activeDays,
-            commitConsistency,
-            avgCommitsPerWeek,
-            contributionScore,
-            activityScore,
-            trustScore,
-            ownershipScore,
-            consistencyScore,
-            ownershipConfidence,
-            commitQualityScore,
+            ...contributionAnalysis,
           },
         });
       } catch (dbErr) {
@@ -276,16 +321,50 @@ export class ScoringService {
       }
     }
 
-    // 3. Compute VDS Sub-scores
+    // 3. Compute overall user activity score based on recent commits
+    let commits30d = 0;
+    let commits90d = 0;
+    let commits365d = 0;
+    const uniqueDays90d = new Set<string>();
+
+    const now = new Date();
+    const date30d = new Date(now.getTime() - 30 * 24 * 3600 * 1000);
+    const date90d = new Date(now.getTime() - 90 * 24 * 3600 * 1000);
+    const date365d = new Date(now.getTime() - 365 * 24 * 3600 * 1000);
+
+    allUserCommits.forEach(c => {
+      const commitDateStr = c.commit?.author?.date || c.commitDate;
+      if (!commitDateStr) return;
+      const cDate = new Date(commitDateStr);
+      const dateStr = commitDateStr.split('T')[0];
+
+      if (cDate >= date30d) commits30d++;
+      if (cDate >= date90d) {
+        commits90d++;
+        uniqueDays90d.add(dateStr);
+      }
+      if (cDate >= date365d) commits365d++;
+    });
+
+    const recentActivity = (commits30d * 4) + (commits90d * 1.5) + (commits365d * 0.2);
+    const activityConsistency = Math.min(40, uniqueDays90d.size * 4);
+    const finalActivityScore = Math.min(100, Math.max(10, Math.round(Math.min(60, recentActivity) + activityConsistency)));
+
+    // Compute overall Trust Score
+    const avgRepoTrust = countAnalyzed > 0 ? (totalTrust / countAnalyzed) : 50;
+    const repoCountBonus = repos.length >= 5 ? 10 : repos.length >= 3 ? 5 : repos.length === 1 ? -10 : 0;
+    const finalTrustScore = Math.min(100, Math.max(10, Math.round(avgRepoTrust + repoCountBonus)));
+
+    // 4. Compute VDS Sub-scores
     const skillScore = skills.length > 0 
       ? Math.round(skills.reduce((acc, curr) => acc + (curr.proficiencyScore || 0), 0) / skills.length)
       : 75;
 
     const avgContribution = countAnalyzed > 0 ? Math.round(totalContribution / countAnalyzed) : 75;
-    const avgTrust = countAnalyzed > 0 ? Math.round(totalTrust / countAnalyzed) : 75;
     const avgComplexity = countAnalyzed > 0 ? Math.round(totalComplexity / countAnalyzed) : 70;
-    const avgActivity = countAnalyzed > 0 ? Math.round(totalActivity / countAnalyzed) : 70;
     const avgAiAudit = countAnalyzed > 0 ? Math.round(totalAiAudit / countAnalyzed) : 78;
+    const avgCommitQuality = countAnalyzed > 0 ? Math.round(totalCommitQuality / countAnalyzed) : 80;
+    const avgOwnership = countAnalyzed > 0 ? Math.round(totalOwnership / countAnalyzed) : 75;
 
     // Project Diversity Categories
     const categories = new Set<string>();
@@ -333,14 +412,21 @@ export class ScoringService {
     const categoriesCount = categories.size;
     const projectDiversity = Math.min(100, 30 + (categoriesCount * 15));
 
-    // 4. Calculate Final Verified Developer Score (VDS)
+    // 5. Calculate Final Verified Developer Score (VDS) using new weights:
+    // Skill Proficiency     20%
+    // Repository Complexity 20%
+    // Contribution Score    20%
+    // Activity Score        15%
+    // Trust Score           15%
+    // Project Diversity     5%
+    // AI Audit Score        5%
     const vds = Math.round(
-      (skillScore * 0.25) +
+      (skillScore * 0.20) +
+      (avgComplexity * 0.20) +
       (avgContribution * 0.20) +
-      (avgTrust * 0.15) +
-      (avgComplexity * 0.15) +
-      (avgActivity * 0.10) +
-      (projectDiversity * 0.10) +
+      (finalActivityScore * 0.15) +
+      (finalTrustScore * 0.15) +
+      (projectDiversity * 0.05) +
       (avgAiAudit * 0.05)
     );
 
@@ -370,11 +456,13 @@ export class ScoringService {
       rank,
       skillScore,
       contributionScore: avgContribution,
-      trustScore: avgTrust,
+      trustScore: finalTrustScore,
       repositoryComplexity: avgComplexity,
-      activityScore: avgActivity,
+      activityScore: finalActivityScore,
       projectDiversity,
       aiAuditScore: avgAiAudit,
+      commitQualityScore: avgCommitQuality,
+      ownershipScore: avgOwnership,
     };
 
     // Save metrics in DB
@@ -479,6 +567,8 @@ export class ScoringService {
             activityScore: user.metrics.activityScore,
             projectDiversity: user.metrics.projectDiversity,
             aiAuditScore: user.metrics.aiAuditScore,
+            commitQualityScore: user.metrics.commitQualityScore,
+            ownershipScore: user.metrics.ownershipScore,
           },
         };
       }
@@ -500,6 +590,8 @@ export class ScoringService {
           activityScore: cachedMetrics.activityScore,
           projectDiversity: cachedMetrics.projectDiversity,
           aiAuditScore: cachedMetrics.aiAuditScore,
+          commitQualityScore: cachedMetrics.commitQualityScore,
+          ownershipScore: cachedMetrics.ownershipScore,
         },
       };
     }

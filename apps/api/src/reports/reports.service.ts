@@ -213,7 +213,7 @@ export class ReportsService {
 
       // VDS Breakdown Grid
       doc.rect(300, 275, 245, 160).fillAndStroke(cLight, cBorder);
-      doc.fillColor(cDark).fontSize(11).font('Helvetica-Bold').text('Score Breakdown:', 315, 290);
+      doc.fillColor(cDark).fontSize(11).font('Helvetica-Bold').text('Score Breakdown:', 315, 288);
       
       const breakdown = data.vds.breakdown;
       const bKeys = [
@@ -224,13 +224,15 @@ export class ReportsService {
         { label: 'Activity Score', val: breakdown.activityScore },
         { label: 'Project Diversity', val: breakdown.projectDiversity },
         { label: 'AI Audit Score', val: breakdown.aiAuditScore },
+        { label: 'Commit Quality Score', val: breakdown.commitQualityScore },
+        { label: 'Ownership Score', val: breakdown.ownershipScore },
       ];
 
-      let yPos = 310;
+      let yPos = 303;
       bKeys.forEach((k) => {
-        doc.fillColor(cMuted).font('Helvetica').fontSize(9).text(k.label, 315, yPos);
-        doc.fillColor(cDark).font('Helvetica-Bold').text(String(k.val), 500, yPos);
-        yPos += 16;
+        doc.fillColor(cMuted).font('Helvetica').fontSize(8).text(k.label, 315, yPos);
+        doc.fillColor(cDark).font('Helvetica-Bold').text(String(k.val ?? 0), 500, yPos);
+        yPos += 14;
       });
 
       // Bio text at the bottom of Page 1

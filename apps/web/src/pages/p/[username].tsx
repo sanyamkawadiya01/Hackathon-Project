@@ -453,6 +453,35 @@ export default function PublicPortfolio() {
             </div>
           )}
 
+          {/* Detailed Scores Grid */}
+          {vds && (
+            <div className="glass-card">
+              <h3 style={{ fontSize: '1.25rem', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Layers style={{ color: 'var(--primary)' }} /> Developer Quality Scores
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {[
+                  { label: 'Contribution Score', value: vds.breakdown.contributionScore, desc: 'Commit volume & codebase participation percentage', color: 'var(--primary)' },
+                  { label: 'Trust Score', value: vds.breakdown.trustScore, desc: 'Repo ownership authority & commit history verification', color: 'var(--secondary)' },
+                  { label: 'Activity Score', value: vds.breakdown.activityScore, desc: 'Commit consistency, frequency & recency metrics', color: '#10b981' },
+                  { label: 'Commit Quality Score', value: vds.breakdown.commitQualityScore ?? 80, desc: 'Message quality, consistency & code change significance', color: '#f59e0b' },
+                  { label: 'Ownership Score', value: vds.breakdown.ownershipScore ?? 75, desc: 'Repository creator status & pull requests merged', color: '#ec4899' },
+                ].map((item, index) => (
+                  <div key={index} style={{ background: 'rgba(255,255,255,0.02)', padding: '14px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.04)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{item.label}</span>
+                      <span style={{ fontSize: '1.1rem', fontWeight: 800, color: item.color }}>{item.value}/100</span>
+                    </div>
+                    <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${item.value}%`, background: item.color, borderRadius: '3px' }} />
+                    </div>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{item.desc}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* VDS Competency Radar Breakdown */}
           {mounted && vds && (
             <div className="glass-card">
@@ -468,7 +497,9 @@ export default function PublicPortfolio() {
                     { subject: 'Complexity', value: vds.breakdown.repositoryComplexity },
                     { subject: 'Activity', value: vds.breakdown.activityScore },
                     { subject: 'Diversity', value: vds.breakdown.projectDiversity },
-                    { subject: 'AI Audit', value: vds.breakdown.aiAuditScore }
+                    { subject: 'AI Audit', value: vds.breakdown.aiAuditScore },
+                    { subject: 'Quality', value: vds.breakdown.commitQualityScore ?? 80 },
+                    { subject: 'Ownership', value: vds.breakdown.ownershipScore ?? 75 }
                   ]}>
                     <PolarGrid stroke="rgba(255,255,255,0.08)" />
                     <PolarAngleAxis dataKey="subject" stroke="var(--text-muted)" style={{ fontSize: '10px' }} />

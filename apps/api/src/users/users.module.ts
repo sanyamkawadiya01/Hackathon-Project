@@ -9,7 +9,7 @@ import { RepositoriesModule } from '../repositories/repositories.module';
 @Module({
   imports: [RepositoriesModule],
   controllers: [UsersController],
-  providers: [UsersService, GithubApiService, SkillExtractorService, ScoringService],
+  providers: [UsersService, SkillExtractorService, ScoringService],
   exports: [UsersService, SkillExtractorService, ScoringService],
 })
 export class UsersModule {}

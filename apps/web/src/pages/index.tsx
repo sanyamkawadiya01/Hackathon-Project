@@ -20,7 +20,8 @@ import {
   ChevronRight,
   TrendingUp,
   Download,
-  Flame
+  Flame,
+  Layers
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -523,6 +524,34 @@ export default function Dashboard() {
                 </div>
               )}
 
+              {/* Detailed Scores Grid */}
+              {vds && (
+                <div className="glass-card" style={{ marginBottom: '16px', padding: '16px' }}>
+                  <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Layers size={16} style={{ color: 'var(--primary)' }} /> Developer Quality Scores
+                  </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {[
+                      { label: 'Contribution Score', value: vds.breakdown.contributionScore, desc: 'Commit volume & codebase participation percentage', color: 'var(--primary)' },
+                      { label: 'Trust Score', value: vds.breakdown.trustScore, desc: 'Repo ownership authority & commit history verification', color: 'var(--secondary)' },
+                      { label: 'Activity Score', value: vds.breakdown.activityScore, desc: 'Commit consistency, frequency & recency metrics', color: '#10b981' },
+                      { label: 'Commit Quality Score', value: vds.breakdown.commitQualityScore ?? 80, desc: 'Message quality, consistency & code change significance', color: '#f59e0b' },
+                      { label: 'Ownership Score', value: vds.breakdown.ownershipScore ?? 75, desc: 'Repository creator status & pull requests merged', color: '#ec4899' },
+                    ].map((item, index) => (
+                      <div key={index} style={{ background: 'rgba(255,255,255,0.02)', padding: '10px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.04)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontWeight: 600, fontSize: '0.8rem' }}>{item.label}</span>
+                          <span style={{ fontSize: '0.9rem', fontWeight: 800, color: item.color }}>{item.value}/100</span>
+                        </div>
+                        <div style={{ height: '4px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px', overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${item.value}%`, background: item.color, borderRadius: '2px' }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Recruiter PDF report download */}
               <a 
                 href={`${API_BASE_URL}/api/reports/${analyzedUser.username}/download`}
@@ -586,7 +615,9 @@ export default function Dashboard() {
                     { subject: 'Complexity', value: vds.breakdown.repositoryComplexity },
                     { subject: 'Activity', value: vds.breakdown.activityScore },
                     { subject: 'Diversity', value: vds.breakdown.projectDiversity },
-                    { subject: 'AI Audit', value: vds.breakdown.aiAuditScore }
+                    { subject: 'AI Audit', value: vds.breakdown.aiAuditScore },
+                    { subject: 'Quality', value: vds.breakdown.commitQualityScore ?? 80 },
+                    { subject: 'Ownership', value: vds.breakdown.ownershipScore ?? 75 }
                   ]}>
                     <PolarGrid stroke="rgba(255,255,255,0.08)" />
                     <PolarAngleAxis dataKey="subject" stroke="var(--text-muted)" style={{ fontSize: '10px' }} />

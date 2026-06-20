@@ -56,25 +56,32 @@ export class UsersController {
     }
 
     try {
-      const metrics = await this.scoringService.getMetricsByUsername(username.trim());
-      if (!metrics) {
+      let metricsObj = await this.scoringService.getMetricsByUsername(username.trim());
+      if (!metricsObj) {
         // Compute metrics on-demand if user exists
         const user = await this.usersService.getUserByUsername(username.trim());
         if (user) {
-          const calculated = await this.scoringService.calculateAndStoreMetrics(user.username, user.id);
-          const fullMetrics = await this.scoringService.getMetricsByUsername(username.trim());
-          return res.status(HttpStatus.OK).json({
-            success: true,
-            data: fullMetrics,
-          });
+          await this.scoringService.calculateAndStoreMetrics(user.username, user.id);
+          metricsObj = await this.scoringService.getMetricsByUsername(username.trim());
         }
+      }
+
+      if (!metricsObj) {
         return res.status(HttpStatus.NOT_FOUND).json({
           error: 'Metrics not found for the specified GitHub user',
         });
       }
+
+      const metrics = metricsObj.metrics || {};
       return res.status(HttpStatus.OK).json({
         success: true,
-        data: metrics,
+        data: metricsObj,
+        contributionScore: metrics.contributionScore ?? 75,
+        trustScore: metrics.trustScore ?? 75,
+        activityScore: metrics.activityScore ?? 70,
+        commitQualityScore: metrics.commitQualityScore ?? 80,
+        ownershipScore: metrics.ownershipScore ?? 75,
+        vds: metrics.vds ?? 75,
       });
     } catch (error) {
       return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
@@ -92,25 +99,32 @@ export class UsersController {
     }
 
     try {
-      const vds = await this.scoringService.getVdsByUsername(username.trim());
-      if (!vds) {
+      let vdsObj = await this.scoringService.getVdsByUsername(username.trim());
+      if (!vdsObj) {
         // Compute VDS on-demand if user exists
         const user = await this.usersService.getUserByUsername(username.trim());
         if (user) {
           await this.scoringService.calculateAndStoreMetrics(user.username, user.id);
-          const calculatedVds = await this.scoringService.getVdsByUsername(username.trim());
-          return res.status(HttpStatus.OK).json({
-            success: true,
-            data: calculatedVds,
-          });
+          vdsObj = await this.scoringService.getVdsByUsername(username.trim());
         }
+      }
+
+      if (!vdsObj) {
         return res.status(HttpStatus.NOT_FOUND).json({
           error: 'VDS not found for the specified GitHub user',
         });
       }
+
+      const breakdown = vdsObj.breakdown || {};
       return res.status(HttpStatus.OK).json({
         success: true,
-        data: vds,
+        data: vdsObj,
+        contributionScore: breakdown.contributionScore ?? 75,
+        trustScore: breakdown.trustScore ?? 75,
+        activityScore: breakdown.activityScore ?? 70,
+        commitQualityScore: breakdown.commitQualityScore ?? 80,
+        ownershipScore: breakdown.ownershipScore ?? 75,
+        vds: vdsObj.vds ?? 75,
       });
     } catch (error) {
       return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
@@ -134,9 +148,24 @@ export class UsersController {
           error: 'GitHub user not found',
         });
       }
+
+      // Fetch metrics to include flat scores at root
+      let metricsObj = await this.scoringService.getMetricsByUsername(username.trim());
+      if (!metricsObj) {
+        await this.scoringService.calculateAndStoreMetrics(profile.username, profile.id);
+        metricsObj = await this.scoringService.getMetricsByUsername(username.trim());
+      }
+      const metrics = metricsObj?.metrics || {};
+
       return res.status(HttpStatus.OK).json({
         success: true,
         data: profile,
+        contributionScore: metrics.contributionScore ?? 75,
+        trustScore: metrics.trustScore ?? 75,
+        activityScore: metrics.activityScore ?? 70,
+        commitQualityScore: metrics.commitQualityScore ?? 80,
+        ownershipScore: metrics.ownershipScore ?? 75,
+        vds: metrics.vds ?? 75,
       });
     } catch (error) {
       return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({

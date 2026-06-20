@@ -215,6 +215,8 @@ model DeveloperMetrics {
   activityScore         Int      @default(0)
   projectDiversity      Int      @default(0)
   aiAuditScore          Int      @default(0)
+  commitQualityScore    Int      @default(0)
+  ownershipScore        Int      @default(0)
   updatedAt             DateTime @updatedAt
   createdAt             DateTime @default(now())
 

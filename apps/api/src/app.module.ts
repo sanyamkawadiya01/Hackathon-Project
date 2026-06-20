@@ -5,6 +5,7 @@ import { VerificationModule } from './verification/verification.module';
 import { DatabaseModule } from './database/database.module';
 import { UsersModule } from './users/users.module';
 import { ReportsModule } from './reports/reports.module';
+import { GithubModule } from './github/github.module';
 
 @Module({
   imports: [
@@ -13,7 +14,8 @@ import { ReportsModule } from './reports/reports.module';
     RepositoriesModule,
     VerificationModule,
     UsersModule,
-    ReportsModule
+    ReportsModule,
+    GithubModule
   ],
 })
 export class AppModule {}
